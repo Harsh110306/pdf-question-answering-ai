@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+env/
+.env
+backend/.env
+
+# Databases
+*.sqlite3
+*.db
+backend/sql_app.db
+
+# Vector stores / FAISS
+.faiss_store/
+backend/.faiss_store/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# MacOS
+.DS_Store

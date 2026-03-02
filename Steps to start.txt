@@ -1,0 +1,9 @@
+first start backend:
+cd d:\HARSH\Projects\pdf_qa_gui\backend
+..\venv\Scripts\activate
+uvicorn main:app --reload
+
+and then start frontend:
+cd d:\HARSH\Projects\pdf_qa_gui
+venv\Scripts\activate
+streamlit run app.py

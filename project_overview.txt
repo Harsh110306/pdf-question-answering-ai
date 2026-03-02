@@ -1,0 +1,72 @@
+=======================================================
+PDF QA GUI PROJECT OVERVIEW
+=======================================================
+
+This document contains a comprehensive explanation of all frameworks, models, packages, and the overall flow of the project.
+
+-------------------------------------------------------
+1. FRONTEND 
+-------------------------------------------------------
+• Framework: Streamlit (`streamlit`)
+• Purpose: Provides a simple, interactive graphical user interface (GUI) on a web browser where a user can upload PDFs and engage in a chat session.
+• How it works: Uses the `requests` package to communicate with the Python FastAPI backend using HTTP REST API calls.
+
+-------------------------------------------------------
+2. BACKEND API & SERVER
+-------------------------------------------------------
+• Framework: FastAPI (`fastapi`)
+• ASGI Server: Uvicorn (`uvicorn[standard]`)
+• Purpose: Serves the RESTful endpoints for document upload, processing, summarization, and interactive chatting. 
+• Database: SQLite (via `SQLAlchemy`) for tracking document metadata and chat histories. 
+• Environment Mgmt: `python-dotenv` and `pydantic-settings` are used to manage environment variables safely.
+• File Uploading: `python-multipart` is used to handle incoming PDF stream data from Streamlit.
+
+-------------------------------------------------------
+3. RAG PIPELINE & AI MODELS
+-------------------------------------------------------
+This project uses a technique called Retrieval-Augmented Generation (RAG).
+
+• Orchestrator: LangChain (`langchain`, `langchain-community`)
+  Ties together the PDF reading, chunking, retrieval, and Large Language Model (LLM) generation aspects.
+
+• Text Extraction: PyMuPDF (`PyMuPDF`)
+  Used to read the raw text efficiently from the uploaded PDF document pages.
+
+• Embedding Model: SentenceTransformers (`sentence-transformers`)
+  Specific Model: "sentence-transformers/all-MiniLM-L6-v2"
+  Purpose: Converts human-readable text into a list of numbers (vectors) representing the contextual meaning of the text.
+
+• Vector Database: FAISS (`faiss-cpu`)
+  Purpose: A highly efficient local vector storage. It stores the number-vectors created by the embedding model and allows the backend to perform blazing-fast semantic searches to find relevant text passages. Store resides in the `.faiss_store` local directory.
+
+• Large Language Model (LLM): Llama 3.1 8B (`llama-3.1-8b-instant`) 
+  Host: Groq Cloud Server (via `langchain-groq` and `ChatGroq`)
+  Purpose: The "brain" of the project that reads the relevant text from the PDF and writes a plain-English, conversational answer back to the user based solely on the context. 
+  Note: OpenAI is also configured in the `.env` but Groq is the primary model used in the code for the LLM.
+
+-------------------------------------------------------
+4. THE COMPLETE PROJECT FLOW
+-------------------------------------------------------
+[Step 1 - Upload]
+User opens the Streamlit frontend and uploads a PDF file. The frontend sends this file over an HTTP POST request to the FastAPI Backend `/documents/upload` endpoint.
+
+[Step 2 - Text Extraction & Chunking]
+FastAPI receives the PDF. It uses PyMuPDF to extract text from all pages. Since LLMs have context limits, LangChain splits this long text into smaller "chunks" (1000 characters each, with a 200 character overlap to keep sentence context).
+
+[Step 3 - Embedding & Storage]
+The text chunks are passed into the `all-MiniLM-L6-v2` embedding model. The vectors (embeddings) generated are saved into the FAISS local database. A record of this document is successfully saved to the SQLite `sql_app.db` relational database.
+
+[Step 4 - Chat Initialization]
+Streamlit automatically requests the backend to start a Chat Session for this document via `/chat/session`.
+
+[Step 5 - User Query]
+User types a question (e.g. "What is this document about?"). It's sent to `/chat/message` on the Backend. 
+
+[Step 6 - Retrieval]
+The Backend takes the question, converts it into an embedding (vector), and asks FAISS: "Find the top 3 most similar text chunks we stored earlier."
+
+[Step 7 - LLM Generation]
+The top 3 mostly matching chunks of text from the document are bundled together into a Prompt along with the user's question. This Prompt is sent over the internet to the Groq API running Llama 3.1. 
+
+[Step 8 - Response]
+Llama 3.1 processes the provided document text and the question, generates a precise answer, and streams the answer back to the backend. The backend bundles the answer with the "sources" (page number and original text snippet) and returns it to the Streamlit Frontend, where it is shown to the user.
